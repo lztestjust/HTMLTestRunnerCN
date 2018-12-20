@@ -208,13 +208,43 @@ class Template_mixin(object):
 <script language="javascript" type="text/javascript">
 output_list = Array();
 
+/* 修改错误和通过的用例按钮的颜色 --lz 
+ 因错误和通过均可能打印出文本，造成颜色与失败用例是一致
+*/
+$(document).ready(function(){
+    trs = document.getElementsByTagName("tr");
+    for (var i = 0; i < trs.length; i++) {
+        tr = trs[i];
+        id = tr.id;
+        if (id.substr(0,2) == 'ft') {
+            td0 = tr.getElementsByTagName("td")[0]
+            if (td0.className == 'errorCase'){
+                td1 = $(td0).parent()
+                btns = td1.find("button")
+                for (var j = 0; j < btns.length; j++) {
+                    $(btns[j]).attr('class', 'btn btn-warning btn-xs')
+                }
+            }
+        }else if (id.substr(0,2) == 'pt'){
+            td0 = tr.getElementsByTagName("td")[0]
+            if (td0.className == 'passCase'){
+                td1 = $(td0).parent()
+                btns = td1.find("button")
+                for (var j = 0; j < btns.length; j++) {
+                    $(btns[j]).attr('class', 'btn btn-success btn-xs')
+                }
+            }
+        }
+    }
+});
+
 /*level 调整增加只显示通过用例的分类 --Findyou
 0:Summary //all hiddenRow
 1:Failed  //pt hiddenRow, ft none
 2:Pass    //pt none, ft hiddenRow
 3:All     //pt none, ft none
 */
-function showCase(level) {
+/*function showCase(level) {
     trs = document.getElementsByTagName("tr");
     for (var i = 0; i < trs.length; i++) {
         tr = trs[i];
@@ -250,8 +280,60 @@ function showCase(level) {
 			detail_class[i].innerHTML="详细"
 		}
 	}
-}
+}*/
 
+/*level 调整增加只显示通过用例的分类 --Findyou, lz
+0:Summary //all hiddenRow
+1:Failed  //pt hiddenRow, ft none
+4:Error   //pt hiddenRow, ft none [lz 添加]
+2:Pass    //pt none, ft hiddenRow
+3:All     //pt none, ft none
+*/
+function showCase(level) {
+    trs = document.getElementsByTagName("tr");
+    for (var i = 0; i < trs.length; i++) {
+        tr = trs[i];
+        id = tr.id;
+        if (id.substr(0,2) == 'ft') {
+            if (level == 2 || level == 0 ) {
+                tr.className = 'hiddenRow';
+            }
+            else {
+                if (tr.getElementsByTagName("td")[0].className == 'errorCase' && level == 1){
+                    tr.className = 'hiddenRow';
+                }
+                else if(tr.getElementsByTagName("td")[0].className == 'failCase' && level == 4){
+                    tr.className = 'hiddenRow';
+                }
+				else{
+					tr.className = '';
+				}
+            }
+        }
+        if (id.substr(0,2) == 'pt') {
+            if (level < 2 || level > 3) {
+                tr.className = 'hiddenRow';
+            }
+            else {
+                tr.className = '';
+            }
+        }
+    }
+
+    //加入【详细】切换文字变化 --Findyou
+    detail_class=document.getElementsByClassName('detail');
+	//console.log(detail_class.length)
+	if (level == 3) {
+		for (var i = 0; i < detail_class.length; i++){
+			detail_class[i].innerHTML="收起"
+		}
+	}
+	else{
+			for (var i = 0; i < detail_class.length; i++){
+			detail_class[i].innerHTML="详细"
+		}
+	}
+}
 function showClassDetail(cid, count) {
     var id_list = Array(count);
     var toHide = 1;
@@ -358,6 +440,7 @@ table       { font-size: 100%; }
 <a class="btn btn-primary" href='javascript:showCase(0)'>概要{ %(passrate)s }</a>
 <a class="btn btn-danger" href='javascript:showCase(1)'>失败{ %(fail)s }</a>
 <a class="btn btn-success" href='javascript:showCase(2)'>通过{ %(Pass)s }</a>
+<a class="btn btn-warning" href='javascript:showCase(4)'>错误{ %(error)s }</a>
 <a class="btn btn-info" href='javascript:showCase(3)'>所有{ %(count)s }</a>
 </p>
 <table id='result_table' class="table table-condensed table-bordered table-hover">
@@ -376,6 +459,8 @@ table       { font-size: 100%; }
     <td>失败</td>
     <td>错误</td>
     <td>详细</td>
+    <!-- lz 添加截图列 -->
+    <td>截图</td>
 </tr>
 %(test_list)s
 <tr id='total_row' class="text-center active">
@@ -385,6 +470,8 @@ table       { font-size: 100%; }
     <td>%(fail)s</td>
     <td>%(error)s</td>
     <td>通过率：%(passrate)s</td>
+    <!-- lz 添加截图列 -->
+    <td>%(picture)s</td>
 </tr>
 </table>
 """ # variables: (test_list, count, Pass, fail, error ,passrate)
@@ -397,6 +484,8 @@ table       { font-size: 100%; }
     <td class="text-center">%(fail)s</td>
     <td class="text-center">%(error)s</td>
     <td class="text-center"><a href="javascript:showClassDetail('%(cid)s',%(count)s)" class="detail" id='%(cid)s'>详细</a></td>
+    <!-- lz 添加截图列 -->
+    <td class="text-center">%(picture)s</td>
 </tr>
 """ # variables: (style, desc, count, Pass, fail, error, cid)
 
@@ -417,6 +506,18 @@ table       { font-size: 100%; }
     </pre>
     </div>
     </td>
+    
+    <!-- lz 添加截图列 -->
+    <td colspan='5' align='center'>
+    <!-- 默认展开错误信息 -Findyou -->
+    <button id='btn_%(tid)s' type="button"  class="btn btn-danger btn-xs" data-toggle="collapse" 
+    data-target='#div2_%(tid)s'>%(status)s</button>
+    <div id='div2_%(tid)s' class="collapse in">
+    <pre>
+    %(script_pic)s
+    </pre>
+    </div>
+    </td>
 </tr>
 """ # variables: (tid, Class, style, desc, status)
 
@@ -425,12 +526,19 @@ table       { font-size: 100%; }
 <tr id='%(tid)s' class='%(Class)s'>
     <td class='%(style)s'><div class='testcase'>%(desc)s</div></td>
     <td colspan='5' align='center'><span class="label label-success success">%(status)s</span></td>
+    <!-- lz 添加截图列 -->
+    <td colspan='5' align='center'><span class="label label-success success">%(status)s</span></td>
 </tr>
 """ # variables: (tid, Class, style, desc, status)
 
     REPORT_TEST_OUTPUT_TMPL = r"""
 %(id)s: %(output)s
 """ # variables: (id, output)
+
+    # lz 添加截图
+    REPORT_TEST_NONE_IMG_TMPL = r"""
+%(text)s
+"""  # variables: (text)
 
     # ------------------------------------------------------------------------
     # ENDING
@@ -458,6 +566,8 @@ class _TestResult(TestResult):
         self.success_count = 0
         self.failure_count = 0
         self.error_count = 0
+        # lz 添加截图
+        self.picture_count = 0
         self.verbosity = verbosity
 
         # result is a list of result in 4 tuple
@@ -470,6 +580,8 @@ class _TestResult(TestResult):
         self.result = []
         #增加一个测试通过率 --Findyou
         self.passrate=float(0)
+        #增加一个测试错误率 --lz
+        self.errorrate=float(0)
 
 
     def startTest(self, test):
@@ -605,13 +717,14 @@ class HTMLTestRunner(Template_mixin):
         if status:
             status = '，'.join(status)
             self.passrate = str("%.2f%%" % (float(result.success_count) / float(result.success_count + result.failure_count + result.error_count) * 100))
+            self.errorrate = str("%.2f%%" % (float(result.error_count) / float(result.success_count + result.failure_count + result.error_count) * 100))
         else:
             status = 'none'
         return [
             ('测试人员', self.tester),
             ('开始时间',startTime),
             ('合计耗时',duration),
-            ('测试结果',status + "，通过率= "+self.passrate),
+            ('测试结果',status + "，通过率= "+self.passrate + "，错误率= "+self.errorrate),
         ]
 
 
@@ -674,12 +787,16 @@ class HTMLTestRunner(Template_mixin):
             desc = doc and '%s: %s' % (name, doc) or name
 
             row = self.REPORT_CLASS_TMPL % dict(
-                style = ne > 0 and 'errorClass' or nf > 0 and 'failClass' or 'passClass',
+                # lz 添加截图
+                style = ne > 0 and 'errorClass' or nf > 0 and 'failClass' or 'passClass'
+                        or ne + nf > 0 and 'pictureCase',
                 desc = desc,
                 count = np+nf+ne,
                 Pass = np,
                 fail = nf,
                 error = ne,
+                # lz 添加截图
+                picture = ne + nf,
                 cid = 'c%s' % (cid+1),
             )
             rows.append(row)
@@ -694,6 +811,8 @@ class HTMLTestRunner(Template_mixin):
             fail = str(result.failure_count),
             error = str(result.error_count),
             passrate =self.passrate,
+            # lz 添加截图
+            picture=str(result.failure_count + result.error_count),
         )
         return report
 
@@ -724,18 +843,41 @@ class HTMLTestRunner(Template_mixin):
             ue = e
         else:
             ue = e
-
-        script = self.REPORT_TEST_OUTPUT_TMPL % dict(
-            id = tid,
-            output = saxutils.escape(uo+ue),
-        )
+        # script = self.REPORT_TEST_OUTPUT_TMPL % dict(
+        #     id=tid,
+        #     output=saxutils.escape(uo + ue),
+        # )
+        # lz 添加截图
+        temp = uo.find('iVB')
+        if temp >= 0:
+            script = self.REPORT_TEST_OUTPUT_TMPL % dict(
+                id=tid,
+                output=saxutils.escape(uo[:temp] + ue),
+            )
+            img_base64 = uo[temp:]
+            img_lz = '<img src="data:image/png;base64,' + img_base64 + '"></img>'
+            script_pic = self.REPORT_TEST_OUTPUT_TMPL % dict(
+                id=tid,
+                output=saxutils.unescape(img_lz),
+            )
+        else:
+            script = self.REPORT_TEST_OUTPUT_TMPL % dict(
+                id=tid,
+                output=saxutils.escape(uo + ue),
+            )
+            script_pic = self.REPORT_TEST_NONE_IMG_TMPL % dict(
+                text='未截图'
+            )
 
         row = tmpl % dict(
             tid = tid,
             Class = (n == 0 and 'hiddenRow' or 'none'),
-            style = n == 2 and 'errorCase' or (n == 1 and 'failCase' or 'passCase'),
+            # lz 添加截图
+            style = n == 1 and 'failCase' or (n == 2 and 'errorCase' or (n == 3 and 'pictureCase' or 'passCase')),
             desc = desc,
             script = script,
+            # lz 添加截图
+            script_pic = script_pic,
             status = self.STATUS[n],
         )
         rows.append(row)
